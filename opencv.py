@@ -43,14 +43,6 @@ def detect_poses():
             
             landmarks = results.pose_landmarks.landmark
 
-            left_foot = landmarks[mp_pose.PoseLandmark.LEFT_FOOT_INDEX]
-            right_foot = landmarks[mp_pose.PoseLandmark.RIGHT_FOOT_INDEX]
-
-            if left_foot.visibility < 0.5 or right_foot.visibility < 0.5:
-                print("Warning: feet not visible")
-            elif left_foot.visibility > 0.5 and right_foot.visibility > 0.5:
-                print("Both feet visible")
-
             h, w, c = frame.shape
             
             x_coords = [landmark.x * w for landmark in landmarks]
