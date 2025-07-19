@@ -1,8 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from utils import DLT
-import seaborn as sns
-sns.set()
+plt.style.use('ggplot')
 
 
 pose_keypoints = np.array([16, 14, 12, 11, 13, 15, 24, 23, 25, 26, 27, 28])
@@ -58,11 +57,11 @@ def visualize_3d(p3ds):
         ax.set_yticks([])
         ax.set_zticks([])
 
-        ax.set_xlim3d(-10, 10)
+        ax.set_xlim3d(-300, 300)
         ax.set_xlabel('x')
-        ax.set_ylim3d(-10, 10)
+        ax.set_ylim3d(0, 600)
         ax.set_ylabel('y')
-        ax.set_zlim3d(-10, 10)
+        ax.set_zlim3d(200, 900)
         ax.set_zlabel('z')
         plt.pause(0.1)
         ax.cla()
