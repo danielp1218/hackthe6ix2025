@@ -1,1 +1,6 @@
 venv
+.venv
+.idea
+__pycache__
+frames_pair
+frames

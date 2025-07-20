@@ -1,3 +1,5 @@
 pygame
 opencv-python
 mediapipe
+scipy
+pyYAML
