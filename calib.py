@@ -563,14 +563,12 @@ def save_extrinsic_calibration_parameters(R0, T0, R1, T1, prefix = ''):
 
     return R0, T0, R1, T1
 
-if __name__ == '__main__':
-
-    if len(sys.argv) != 2:
-        print('Call with settings filename: "python3 calibrate.py calibration_settings.yaml"')
-        quit()
+def main():
+    # Always use the calibration_settings.yaml file
+    settings_filename = 'calibration_settings.yaml'
     
-    #Open and parse the settings file
-    parse_calibration_settings_file(sys.argv[1])
+    # Open and parse the settings file
+    parse_calibration_settings_file(settings_filename)
 
 
     """Step1. Save calibration frames for single cameras"""
@@ -579,7 +577,7 @@ if __name__ == '__main__':
 
 
     """Step2. Obtain camera intrinsic matrices and save them"""
-    #camera0 intrinsics
+    # camera0 intrinsics
     images_prefix = os.path.join('frames', 'camera0*')
     cmtx0, dist0 = calibrate_camera_for_intrinsic_parameters(images_prefix) 
     save_camera_intrinsics(cmtx0, dist0, 'camera0') #this will write cmtx and dist to disk
@@ -611,15 +609,5 @@ if __name__ == '__main__':
     camera1_data = [cmtx1, dist1, R1, T1]
     check_calibration('camera0', camera0_data, 'camera1', camera1_data, _zshift = 60.)
 
-
-    """Optional. Define a different origin point and save the calibration data"""
-    # #get the world to camera0 rotation and translation
-    # R_W0, T_W0 = get_world_space_origin(cmtx0, dist0, os.path.join('frames_pair', 'camera0_4.png'))
-    # #get rotation and translation from world directly to camera1
-    # R_W1, T_W1 = get_cam1_to_world_transforms(cmtx0, dist0, R_W0, T_W0,
-    #                                           cmtx1, dist1, R1, T1,
-    #                                           os.path.join('frames_pair', 'camera0_4.png'),
-    #                                           os.path.join('frames_pair', 'camera1_4.png'),)
-
-    # #save rotation and translation parameters to disk
-    # save_extrinsic_calibration_parameters(R_W0, T_W0, R_W1, T_W1, prefix = 'world_to_') #this will write R and T to disk
+if __name__ == '__main__':
+    main()
