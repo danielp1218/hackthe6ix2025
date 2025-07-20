@@ -14,15 +14,17 @@
 
 // UDP configuration - send to Python server
 #define SERVER_IP "10.33.53.104"  // IP where Python runs
-#define SERVER_PORT 9999
+#define DEFAULT_SERVER_PORT 9999
 
 // Global UDP socket
 static int g_udp_socket = -1;
 static struct sockaddr_in g_server_addr;
+static int g_server_port = DEFAULT_SERVER_PORT;
 
 // Camera frame header structure
 typedef struct {
     uint32_t magic;       // 0x46524D45 ("FRME")
+    uint32_t camera_id;   // Camera identifier (0 or 1)
     uint32_t sequence;    // Frame number
     uint32_t frametype;   // QNX camera frametype
     uint32_t width;       // Frame width
@@ -55,13 +57,18 @@ int main(int argc, char* argv[])
     camera_frametype_t frametype = CAMERA_FRAMETYPE_UNSPECIFIED;
 
     // Parse command line arguments
-    while ((opt = getopt(argc, argv, "u:")) != -1) {
+    while ((opt = getopt(argc, argv, "u:p:")) != -1) {
         switch (opt) {
         case 'u':
             unit = (camera_unit_t)strtol(optarg, NULL, 10);
             break;
+        case 'p':
+            g_server_port = (int)strtol(optarg, NULL, 10);
+            break;
         default:
-            printf("Usage: %s -u <camera_unit>\n", argv[0]);
+            printf("Usage: %s -u <camera_unit> [-p <port>]\n", argv[0]);
+            printf("  -u <camera_unit>  Camera unit number\n");
+            printf("  -p <port>         UDP port (default: %d)\n", DEFAULT_SERVER_PORT);
             exit(EXIT_FAILURE);
         }
     }
@@ -70,11 +77,14 @@ int main(int argc, char* argv[])
     if (unit == CAMERA_UNIT_NONE || unit >= CAMERA_UNIT_NUM_UNITS) {
         listAvailableCameras();
         printf("Please specify camera unit with -u option\n");
+        printf("Usage: %s -u <camera_unit> [-p <port>]\n", argv[0]);
+        printf("  -u <camera_unit>  Camera unit number\n");
+        printf("  -p <port>         UDP port (default: %d)\n", DEFAULT_SERVER_PORT);
         exit(EXIT_SUCCESS);
     }
 
     // Initialize UDP socket
-    printf("Setting up UDP connection to %s:%d...\n", SERVER_IP, SERVER_PORT);
+    printf("Setting up UDP connection to %s:%d...\n", SERVER_IP, g_server_port);
     if (initUdpSocket() != 0) {
         printf("Failed to initialize UDP socket.\n");
         exit(EXIT_FAILURE);
@@ -116,7 +126,7 @@ int main(int argc, char* argv[])
     printf("Press any key to stop.\n\n");
 
     // Start streaming
-    err = camera_start_viewfinder(handle, processCameraData, NULL, NULL);
+    err = camera_start_viewfinder(handle, processCameraData, &unit, NULL);
     if (err != CAMERA_EOK) {
         printf("Failed to start camera: err = %d\n", err);
         camera_close(handle);
@@ -182,7 +192,7 @@ static int initUdpSocket(void)
     // Setup server address
     memset(&g_server_addr, 0, sizeof(g_server_addr));
     g_server_addr.sin_family = AF_INET;
-    g_server_addr.sin_port = htons(SERVER_PORT);
+    g_server_addr.sin_port = htons(g_server_port);
     
     if (inet_pton(AF_INET, SERVER_IP, &g_server_addr.sin_addr) <= 0) {
         printf("Invalid server IP: %s\n", SERVER_IP);
@@ -215,7 +225,10 @@ static void processCameraData(camera_handle_t handle, camera_buffer_t* buffer, v
     uint32_t crop_x_start, crop_y_start;
 
     (void)handle;
-    (void)arg;
+    
+    // Get camera ID from argument
+    camera_unit_t* camera_unit = (camera_unit_t*)arg;
+    uint32_t camera_id = camera_unit ? (uint32_t)*camera_unit : 0;
 
     if (g_udp_socket < 0) return;
 
@@ -283,6 +296,7 @@ static void processCameraData(camera_handle_t handle, camera_buffer_t* buffer, v
 
     // Prepare header with reduced dimensions
     header.magic = 0x46524D45;
+    header.camera_id = camera_id;
     header.sequence = frame_sequence++;
     header.frametype = 99;  // Custom frametype for grayscale (1 byte per pixel)
     header.width = reduced_width;
