@@ -88,13 +88,13 @@ def run_udp_server():
                 # Parse the received data (assuming it contains 3D keypoints)
                 if isinstance(received_data, dict) and len(received_data) > 0:
                     #calculate 3d position
-                    received_data = received_data.get('keypoints', [])
-                    camera_id = received_data.get('camera', 0)
+                    pose = received_data['keypoints']
+                    camera_id = received_data['camera']
 
                     if camera_id == 0:
-                        last_camera0_keypoints = received_data
+                        last_camera0_keypoints = pose
                     elif camera_id == 1:
-                        last_camera1_keypoints = received_data
+                        last_camera1_keypoints = pose
                     else:
                         print("Received unexpected data format:", received_data)
                         continue
