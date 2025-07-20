@@ -9,7 +9,7 @@ app = Flask(__name__)
 def call_calib():
     try:
         # Run the calib.py script as a separate process
-        process = subprocess.Popen(['python', '/Users/davidhe/Documents/GitHub/hackthe6ix2025/last/calib.py'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = subprocess.Popen(['python', '/home/aaron/hackthe6ix2025/calib.py'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = process.communicate()
 
         # Return the output of the calib.py script
