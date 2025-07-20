@@ -1,7 +1,7 @@
 import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
-from utils import write_keypoints_to_disk
+from utils import write_keypoints_to_disk, DLT, get_projection_matrix
 import socket
 import json
 
@@ -16,7 +16,6 @@ ax = fig.add_subplot(111, projection='3d')
 def visualize_3d_live(frame_p3ds):
     """Visualizes 3D keypoints live."""
     print(frame_p3ds)
-    global fig, ax
 
     torso = [[0, 1], [1, 7], [7, 6], [6, 0]]
     armr = [[1, 3], [3, 5]]
@@ -48,6 +47,24 @@ def visualize_3d_live(frame_p3ds):
 
     plt.pause(0.1)
 
+def pose_3d_construction(frame0_keypoints, frame1_keypoints):
+    if len(frame0_keypoints) == 0 or len(frame1_keypoints) == 0:
+        return []
+
+    frame_p3ds = []
+    for uv1, uv2 in zip(frame0_keypoints, frame1_keypoints):
+        if uv1[0] == -1 or uv2[0] == -1:
+            _p3d = [-1, -1, -1]
+        else:
+            _p3d = DLT(get_projection_matrix(0), get_projection_matrix(1), uv1, uv2) #calculate 3d position of keypoint
+        frame_p3ds.append(_p3d)
+
+    '''
+    This contains the 3d position of each keypoint in current frame.
+    For real time application, this is what you want.
+    '''
+    return np.array(frame_p3ds).reshape((12, 3))
+
 def run_udp_server():
     """Main function to receive UDP packets and visualize 3D pose in real time."""
     # Create UDP socket
@@ -58,10 +75,9 @@ def run_udp_server():
     print("UDP server listening on 127.0.0.1:8080")
     print("Press ESC to exit...")
     
-    kpts_cam0 = []
-    kpts_cam1 = []
-    kpts_3d = []
-    
+    last_camera0_keypoints = []
+    last_camera1_keypoints = []
+
     try:
         while True:
             try:
@@ -70,14 +86,22 @@ def run_udp_server():
                 received_data = json.loads(data.decode())
                 
                 # Parse the received data (assuming it contains 3D keypoints)
-                if isinstance(received_data, list) and len(received_data) > 0:
-                    frame_p3ds = np.array(received_data).reshape((12, 3))
+                if isinstance(received_data, dict) and len(received_data) > 0:
+                    #calculate 3d position
+                    received_data = received_data.get('keypoints', [])
+                    camera_id = received_data.get('camera', 0)
+
+                    if camera_id == 0:
+                        last_camera0_keypoints = received_data
+                    elif camera_id == 1:
+                        last_camera1_keypoints = received_data
+                    else:
+                        print("Received unexpected data format:", received_data)
+                        continue
                     
-                    # Store for later use
-                    kpts_3d.append(frame_p3ds)
-                    
-                    # Visualize the received 3D pose
-                    visualize_3d_live(frame_p3ds)
+                    frame_p3ds = pose_3d_construction(last_camera0_keypoints, last_camera1_keypoints)
+                    if len(frame_p3ds) > 0:
+                        visualize_3d_live(frame_p3ds)
                     
             except socket.timeout:
                 # Continue loop if no data received within timeout
@@ -99,13 +123,6 @@ def run_udp_server():
         udp_socket.close()
         cv.destroyAllWindows()
     
-    return np.array(kpts_cam0), np.array(kpts_cam1), np.array(kpts_3d)
 
 if __name__ == '__main__':
-    # Start UDP server to receive packets from pose_detection.py
-    kpts_cam0, kpts_cam1, kpts_3d = run_udp_server()
-
-    #this will create keypoints file in current working folder
-    write_keypoints_to_disk('kpts_cam0.dat', kpts_cam0)
-    write_keypoints_to_disk('kpts_cam1.dat', kpts_cam1)
-    write_keypoints_to_disk('kpts_3d.dat', kpts_3d)
+    run_udp_server()
